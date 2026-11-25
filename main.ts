@@ -9,9 +9,17 @@
 //
 // Deterministic: no network, no randomness, no timestamps, no input.
 // The grader runs this on Node 22, which runs TypeScript as-is.
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
 const word = "defenestration";
+
+// Gate self-check (revision): enforce the sealed scorer's gate before
+// writing, so a bad word fails loudly here instead of silently scoring
+// zero — exactly one word, 1–24 chars, letters only. "defenestration"
+// is 14 chars, inside the window.
+if (!/^[A-Za-z]{1,24}$/.test(word)) {
+  throw new Error(`word fails entry gate: ${JSON.stringify(word)}`);
+}
 
 // The grader runs this in a sandbox with /output ready. Outside the
 // grader, MAKEFUN_OUTPUT_DIR stands in for /output:
@@ -19,6 +27,13 @@ const word = "defenestration";
 // The file holds exactly the word — 14 bytes, no trailing newline —
 // inside the gate's 1-to-24-character window, exactly one word.
 const outDir = process.env.MAKEFUN_OUTPUT_DIR ?? "/output";
+const outPath = `${outDir}/entry.txt`;
 
 mkdirSync(outDir, { recursive: true });
-writeFileSync(`${outDir}/entry.txt`, word, "utf8");
+writeFileSync(outPath, word, "utf8");
+
+// Verify the bytes landed exactly as intended — read back and compare,
+// so a partial write or stray newline is caught, not shipped.
+if (readFileSync(outPath, "utf8") !== word) {
+  throw new Error(`entry.txt mismatch: expected ${JSON.stringify(word)}`);
+}
